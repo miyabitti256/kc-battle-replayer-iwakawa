@@ -15,6 +15,7 @@
 		"generate:lookups": "bun scripts/generateLookups.ts"
 	},
 	"devDependencies": {
+		"@digital-go-jp/tailwind-theme-plugin": "^1.0.1",
 		"@eslint/js": "^10.0.1",
 		"@sveltejs/adapter-static": "^3.0.10",
 		"@sveltejs/kit": "^2.63.0",

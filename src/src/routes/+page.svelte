@@ -2,6 +2,7 @@
 	import { onMount } from 'svelte';
 	import LZString from 'lz-string';
 	import { convertBattleLogToReplay, parseLogFilename, type BattleLogItem } from '$lib/index.js';
+	import Icon from '$lib/components/Icon.svelte';
 
 	interface ToastItem {
 		id: number;
@@ -79,7 +80,7 @@
 
 				allLogs = items;
 				currentPage = 1;
-				addToast(`${items.length.toLocaleString()} 件の戦闘ログをインデックス化しました`, 'info');
+				addToast(`${items.length.toLocaleString()} 件の戦闘ログを読み込みました`, 'info');
 			} catch (error) {
 				const domErr = error as DOMException;
 				if (domErr?.name !== 'AbortError') {
@@ -118,7 +119,7 @@
 		allLogs = items;
 		currentPage = 1;
 		isLoading = false;
-		addToast(`${items.length.toLocaleString()} 件の戦闘ログをインデックス化しました`, 'info');
+		addToast(`${items.length.toLocaleString()} 件の戦闘ログを読み込みました`, 'info');
 	}
 
 	function clearSearch() {
@@ -216,7 +217,7 @@
 			const replay = convertBattleLogToReplay(text);
 			const jsonString = JSON.stringify(replay, null, 2);
 			await navigator.clipboard.writeText(jsonString);
-			addToast('リプレイJSONをクリップボードにコピーしました', 'success');
+			addToast('リプレイJSONをコピーしました', 'success');
 		} catch (error) {
 			addToast(
 				`コピーに失敗しました: ${error instanceof Error ? error.message : String(error)}`,
@@ -243,7 +244,7 @@
 			a.click();
 			document.body.removeChild(a);
 			URL.revokeObjectURL(url);
-			addToast(`${baseName}.replay.json を保存しました`, 'success');
+			addToast(`${baseName}.replay.json をダウンロードしました`, 'success');
 		} catch (error) {
 			addToast(
 				`保存に失敗しました: ${error instanceof Error ? error.message : String(error)}`,
@@ -256,20 +257,25 @@
 </script>
 
 <div
-	class="flex min-h-screen flex-col bg-zinc-50 font-sans text-zinc-800 dark:bg-zinc-950 dark:text-zinc-200"
+	class="flex min-h-screen flex-col bg-solid-gray-50 font-sans text-solid-gray-900 transition-colors dark:bg-solid-gray-900 dark:text-white"
 >
-	<!-- ヘッダー -->
+	<!-- ヘッダー (DADS HeaderContainer準拠) -->
 	<header
-		class="sticky top-0 z-20 border-b border-zinc-200 bg-white/95 px-4 py-2.5 shadow-xs backdrop-blur sm:px-6 dark:border-zinc-800 dark:bg-zinc-900/95"
+		class="sticky top-0 z-20 border-b border-solid-gray-300 bg-white/95 px-4 py-2.5 backdrop-blur sm:px-6 dark:border-solid-gray-700 dark:bg-solid-gray-800/95"
 	>
 		<div class="mx-auto flex max-w-7xl flex-wrap items-center justify-between gap-3">
 			<div class="flex items-center gap-2.5">
-				<h1 class="text-sm font-semibold tracking-tight text-zinc-900 dark:text-zinc-100">
-					艦これ バトルリプレイヤー（岩川版）
+				<h1 class="text-sm font-bold tracking-normal text-solid-gray-900 dark:text-white">
+					艦これ バトルリプレイヤー
 				</h1>
+				<span
+					class="rounded-4 border border-solid-gray-300 bg-solid-gray-100 px-2 py-0.5 text-[11px] font-medium text-solid-gray-700 dark:border-solid-gray-600 dark:bg-solid-gray-700 dark:text-solid-gray-300"
+				>
+					岩川版
+				</span>
 				{#if allLogs.length > 0}
 					<span
-						class="rounded border border-zinc-200 bg-zinc-100 px-2 py-0.5 font-mono text-xs text-zinc-600 dark:border-zinc-700 dark:bg-zinc-800 dark:text-zinc-400"
+						class="rounded-4 border border-solid-gray-300 bg-white px-2 py-0.5 font-mono text-xs text-solid-gray-700 dark:border-solid-gray-600 dark:bg-solid-gray-800 dark:text-solid-gray-300"
 					>
 						{allLogs.length.toLocaleString()} 件
 					</span>
@@ -291,46 +297,46 @@
 					type="button"
 					onclick={selectDirectory}
 					disabled={isLoading}
-					class="inline-flex cursor-pointer items-center gap-1.5 rounded border border-zinc-300 bg-white px-2.5 py-1 text-xs font-medium text-zinc-700 transition hover:bg-zinc-100 active:bg-zinc-200 disabled:opacity-40 dark:border-zinc-700 dark:bg-zinc-800 dark:text-zinc-200 dark:hover:bg-zinc-700 dark:active:bg-zinc-800"
+					class="inline-flex cursor-pointer items-center gap-1.5 rounded-4 border border-solid-gray-600 bg-white px-2.5 py-1 text-xs font-medium text-solid-gray-900 transition hover:bg-solid-gray-100 focus-visible:outline-4 focus-visible:outline-focus-yellow active:bg-solid-gray-200 disabled:opacity-40 dark:border-solid-gray-400 dark:bg-solid-gray-800 dark:text-white dark:hover:bg-solid-gray-700"
 				>
-					<span>📁</span>
+					<Icon name="folder" class="size-3.5 text-solid-gray-600 dark:text-solid-gray-300" />
 					<span>{isLoading ? '走査中...' : 'フォルダ選択'}</span>
 				</button>
 
 				{#if allLogs.length > 0}
-					<!-- 検索入力部: 海域 / 番号 / マス -->
+					<!-- 検索入力部: 海域 / 番号 / マス (DADS Search Box / Input準拠) -->
 					<div class="flex items-center gap-1">
 						<input
 							type="text"
 							placeholder="海域 (62)"
 							bind:value={searchWorld}
 							oninput={() => (currentPage = 1)}
-							class="w-18 rounded border border-zinc-300 bg-white px-2 py-1 text-xs text-zinc-800 placeholder-zinc-400 transition focus:border-zinc-500 focus:outline-none dark:border-zinc-700 dark:bg-zinc-800 dark:text-zinc-100 dark:placeholder-zinc-500 dark:focus:border-zinc-400"
+							class="w-18 rounded-4 border border-solid-gray-420 bg-white px-2 py-1 text-xs text-solid-gray-900 placeholder-solid-gray-420 transition focus:border-blue-900 focus:ring-2 focus:ring-focus-yellow focus:outline-none dark:border-solid-gray-500 dark:bg-solid-gray-800 dark:text-white dark:placeholder-solid-gray-400 dark:focus:border-blue-400"
 							title="海域で絞り込み (例: 62, 5, E2)"
 						/>
-						<span class="text-xs text-zinc-400 dark:text-zinc-500">-</span>
+						<span class="text-xs text-solid-gray-420 dark:text-solid-gray-500">-</span>
 						<input
 							type="text"
 							placeholder="番号 (3)"
 							bind:value={searchMap}
 							oninput={() => (currentPage = 1)}
-							class="w-16 rounded border border-zinc-300 bg-white px-2 py-1 text-xs text-zinc-800 placeholder-zinc-400 transition focus:border-zinc-500 focus:outline-none dark:border-zinc-700 dark:bg-zinc-800 dark:text-zinc-100 dark:placeholder-zinc-500 dark:focus:border-zinc-400"
+							class="w-16 rounded-4 border border-solid-gray-420 bg-white px-2 py-1 text-xs text-solid-gray-900 placeholder-solid-gray-420 transition focus:border-blue-900 focus:ring-2 focus:ring-focus-yellow focus:outline-none dark:border-solid-gray-500 dark:bg-solid-gray-800 dark:text-white dark:placeholder-solid-gray-400 dark:focus:border-blue-400"
 							title="マップ番号で絞り込み (例: 3, 5)"
 						/>
-						<span class="text-xs text-zinc-400 dark:text-zinc-500">/</span>
+						<span class="text-xs text-solid-gray-420 dark:text-solid-gray-500">/</span>
 						<input
 							type="text"
 							placeholder="マス (62)"
 							bind:value={searchCell}
 							oninput={() => (currentPage = 1)}
-							class="w-18 rounded border border-zinc-300 bg-white px-2 py-1 text-xs text-zinc-800 placeholder-zinc-400 transition focus:border-zinc-500 focus:outline-none dark:border-zinc-700 dark:bg-zinc-800 dark:text-zinc-100 dark:placeholder-zinc-500 dark:focus:border-zinc-400"
+							class="w-18 rounded-4 border border-solid-gray-420 bg-white px-2 py-1 text-xs text-solid-gray-900 placeholder-solid-gray-420 transition focus:border-blue-900 focus:ring-2 focus:ring-focus-yellow focus:outline-none dark:border-solid-gray-500 dark:bg-solid-gray-800 dark:text-white dark:placeholder-solid-gray-400 dark:focus:border-blue-400"
 							title="マス(セル)で絞り込み (例: 62, boss)"
 						/>
 						<button
 							type="button"
 							onclick={clearSearch}
 							disabled={!isFiltering}
-							class="cursor-pointer rounded border border-zinc-300 px-2 py-1 text-xs text-zinc-600 transition hover:bg-zinc-100 disabled:cursor-not-allowed disabled:opacity-30 dark:border-zinc-700 dark:text-zinc-400 dark:hover:bg-zinc-800 dark:disabled:opacity-30"
+							class="cursor-pointer rounded-4 border border-solid-gray-420 bg-white px-2 py-1 text-xs text-solid-gray-700 transition hover:bg-solid-gray-100 focus-visible:outline-2 focus-visible:outline-focus-yellow disabled:cursor-not-allowed disabled:opacity-30 dark:border-solid-gray-600 dark:bg-solid-gray-800 dark:text-solid-gray-300 dark:hover:bg-solid-gray-700"
 							title="検索条件をクリア"
 						>
 							クリア
@@ -340,10 +346,14 @@
 					<button
 						type="button"
 						onclick={toggleSortOrder}
-						class="inline-flex cursor-pointer items-center rounded border border-zinc-300 bg-white px-2.5 py-1 text-xs text-zinc-700 transition hover:bg-zinc-100 active:bg-zinc-200 dark:border-zinc-700 dark:bg-zinc-800 dark:text-zinc-200 dark:hover:bg-zinc-700"
+						class="inline-flex cursor-pointer items-center gap-1 rounded-4 border border-solid-gray-600 bg-white px-2.5 py-1 text-xs font-medium text-solid-gray-900 transition hover:bg-solid-gray-100 focus-visible:outline-2 focus-visible:outline-focus-yellow active:bg-solid-gray-200 dark:border-solid-gray-400 dark:bg-solid-gray-800 dark:text-white dark:hover:bg-solid-gray-700"
 						title="ソート順の切り替え"
 					>
-						<span>{sortOrder === 'desc' ? '▼ 最新順' : '▲ 古い順'}</span>
+						<Icon
+							name={sortOrder === 'desc' ? 'arrow-down' : 'arrow-up'}
+							class="size-3 text-solid-gray-600 dark:text-solid-gray-300"
+						/>
+						<span>{sortOrder === 'desc' ? '最新順' : '古い順'}</span>
 					</button>
 				{/if}
 
@@ -351,11 +361,11 @@
 				<button
 					type="button"
 					onclick={toggleTheme}
-					class="inline-flex cursor-pointer items-center justify-center rounded border border-zinc-300 bg-white p-1.5 text-xs text-zinc-700 transition hover:bg-zinc-100 dark:border-zinc-700 dark:bg-zinc-800 dark:text-zinc-300 dark:hover:bg-zinc-700"
+					class="inline-flex h-7 w-7 cursor-pointer items-center justify-center rounded-4 border border-solid-gray-600 bg-white text-xs text-solid-gray-700 transition hover:bg-solid-gray-100 focus-visible:outline-2 focus-visible:outline-focus-yellow dark:border-solid-gray-400 dark:bg-solid-gray-800 dark:text-solid-gray-200 dark:hover:bg-solid-gray-700"
 					title={isDark ? 'ライトモードに切り替え' : 'ダークモードに切り替え'}
 					aria-label="テーマ切り替え"
 				>
-					<span>{isDark ? '☀️ ライト' : '🌙 ダーク'}</span>
+					<Icon name={isDark ? 'sun' : 'moon'} class="size-3.5" />
 				</button>
 			</div>
 		</div>
@@ -364,71 +374,80 @@
 	<!-- メインコンテンツ -->
 	<main class="mx-auto flex w-full max-w-7xl flex-1 flex-col p-4 sm:p-6">
 		{#if allLogs.length === 0}
+			<!-- 空状態 (DADS Notice / Container準拠) -->
 			<div
-				class="my-auto flex flex-col items-center justify-center rounded border border-dashed border-zinc-300 bg-white p-12 text-center dark:border-zinc-800 dark:bg-zinc-900"
+				class="my-auto flex flex-col items-center justify-center rounded-8 border border-solid-gray-300 bg-white p-12 text-center dark:border-solid-gray-700 dark:bg-solid-gray-800"
 			>
-				<h2 class="text-sm font-medium text-zinc-700 dark:text-zinc-300">
+				<Icon name="folder" class="mb-3 size-8 text-solid-gray-500 dark:text-solid-gray-400" />
+				<h2 class="text-base font-bold text-solid-gray-900 dark:text-white">
 					戦闘ログフォルダを選択してください
 				</h2>
-				<p class="mt-1.5 max-w-md text-xs text-zinc-500 dark:text-zinc-400">
-					ファイル名からインデックスを作成するため、大量のファイルがあっても高速に動作します。
+				<p
+					class="mt-2 max-w-md text-xs leading-relaxed text-solid-gray-600 dark:text-solid-gray-300"
+				>
+					七四式電子観測儀の <code
+						class="rounded-4 border border-solid-gray-300 bg-solid-gray-100 px-1.5 py-0.5 font-mono text-[11px] text-solid-gray-800 dark:border-solid-gray-600 dark:bg-solid-gray-700 dark:text-solid-gray-200"
+						>BattleLog</code
+					> フォルダを選択すると、ファイル名から瞬時にインデックスを作成し一覧表示します。
 				</p>
 				<button
 					type="button"
 					onclick={selectDirectory}
 					disabled={isLoading}
-					class="mt-4 inline-flex cursor-pointer items-center gap-1.5 rounded border border-zinc-300 bg-zinc-100 px-3 py-1.5 text-xs font-medium text-zinc-800 transition hover:bg-zinc-200 disabled:opacity-40 dark:border-zinc-700 dark:bg-zinc-800 dark:text-zinc-200 dark:hover:bg-zinc-700"
+					class="mt-5 inline-flex cursor-pointer items-center gap-2 rounded-4 bg-blue-900 px-5 py-2 text-xs font-bold text-white transition hover:bg-blue-1000 focus-visible:outline-4 focus-visible:outline-focus-yellow active:bg-blue-1100 disabled:opacity-40 dark:bg-blue-800 dark:hover:bg-blue-700"
 				>
-					<span>📁</span>
-					<span>{isLoading ? '読み込み中...' : 'フォルダを選択する'}</span>
+					<Icon name="folder" class="size-4" />
+					<span>{isLoading ? '読み込み中...' : 'BattleLog フォルダを開く'}</span>
 				</button>
 			</div>
 		{:else if filteredLogs.length === 0}
 			<div
-				class="my-16 flex flex-col items-center justify-center rounded border border-zinc-200 bg-white p-8 text-center text-zinc-500 dark:border-zinc-800 dark:bg-zinc-900 dark:text-zinc-400"
+				class="my-16 flex flex-col items-center justify-center rounded-4 border border-solid-gray-300 bg-white p-8 text-center text-solid-gray-600 dark:border-solid-gray-700 dark:bg-solid-gray-800 dark:text-solid-gray-300"
 			>
 				<p class="text-xs">条件に一致する戦闘ログが見つかりませんでした。</p>
 				<button
 					type="button"
 					onclick={clearSearch}
-					class="mt-2 cursor-pointer text-xs text-blue-600 underline hover:text-blue-500 dark:text-blue-400 dark:hover:text-blue-300"
+					class="mt-2 cursor-pointer text-xs font-medium text-blue-900 underline hover:text-blue-1000 dark:text-blue-300 dark:hover:text-blue-200"
 				>
 					検索条件をクリア
 				</button>
 			</div>
 		{:else}
-			<!-- シンプルなデータテーブル -->
+			<!-- テーブル (DADS Table準拠) -->
 			<div
-				class="flex-1 overflow-hidden rounded border border-zinc-200 bg-white shadow-xs dark:border-zinc-800 dark:bg-zinc-900"
+				class="flex-1 overflow-hidden rounded-4 border border-solid-gray-300 bg-white dark:border-solid-gray-700 dark:bg-solid-gray-800"
 			>
 				<div class="overflow-x-auto">
 					<table class="w-full table-fixed border-collapse text-left text-xs">
 						<thead>
 							<tr
-								class="border-b border-zinc-200 bg-zinc-100 font-medium text-zinc-600 dark:border-zinc-800 dark:bg-zinc-800/80 dark:text-zinc-400"
+								class="border-b-2 border-solid-gray-600 bg-solid-gray-100 font-bold text-solid-gray-900 dark:border-solid-gray-400 dark:bg-solid-gray-700/80 dark:text-white"
 							>
-								<th class="w-40 px-3 py-2">日時</th>
-								<th class="w-20 px-3 py-2">海域</th>
-								<th class="w-16 px-3 py-2">番号</th>
-								<th class="w-20 px-3 py-2">マス</th>
-								<th class="px-3 py-2">ファイル名</th>
-								<th class="w-44 px-3 py-2 text-right">操作</th>
+								<th class="w-40 px-3 py-2.5">日時</th>
+								<th class="w-20 px-3 py-2.5">海域</th>
+								<th class="w-16 px-3 py-2.5">番号</th>
+								<th class="w-20 px-3 py-2.5">マス</th>
+								<th class="px-3 py-2.5">ファイル名</th>
+								<th class="w-44 px-3 py-2.5 text-right">操作</th>
 							</tr>
 						</thead>
-						<tbody class="divide-y divide-zinc-200 dark:divide-zinc-800/60">
+						<tbody class="divide-y divide-solid-gray-200 dark:divide-solid-gray-700">
 							{#each paginatedLogs as item (item.id)}
-								<tr class="transition-colors hover:bg-zinc-50 dark:hover:bg-zinc-800/40">
+								<tr
+									class="transition-colors hover:bg-solid-gray-50 dark:hover:bg-solid-gray-700/40"
+								>
 									<td
-										class="px-3 py-2 font-mono whitespace-nowrap text-zinc-700 dark:text-zinc-300"
+										class="px-3 py-2 font-mono whitespace-nowrap text-solid-gray-800 tabular-nums dark:text-solid-gray-200"
 									>
 										{item.dateTimeStr}
 									</td>
 									<td
-										class="px-3 py-2 font-mono whitespace-nowrap text-zinc-700 dark:text-zinc-300"
+										class="px-3 py-2 font-mono whitespace-nowrap text-solid-gray-800 dark:text-solid-gray-200"
 									>
 										{#if item.isPractice}
 											<span
-												class="rounded border border-zinc-300 px-1.5 py-0.5 text-zinc-600 dark:border-zinc-700 dark:text-zinc-400"
+												class="rounded-4 border border-green-800 bg-green-50 px-1.5 py-0.5 text-[11px] font-medium text-green-900 dark:border-green-500 dark:bg-green-950/40 dark:text-green-300"
 											>
 												演習
 											</span>
@@ -437,17 +456,17 @@
 										{/if}
 									</td>
 									<td
-										class="px-3 py-2 font-mono whitespace-nowrap text-zinc-700 dark:text-zinc-300"
+										class="px-3 py-2 font-mono whitespace-nowrap text-solid-gray-800 dark:text-solid-gray-200"
 									>
 										{item.map}
 									</td>
 									<td
-										class="px-3 py-2 font-mono whitespace-nowrap text-zinc-700 dark:text-zinc-300"
+										class="px-3 py-2 font-mono whitespace-nowrap text-solid-gray-800 dark:text-solid-gray-200"
 									>
 										{item.cell}
 									</td>
 									<td
-										class="truncate px-3 py-2 font-mono text-zinc-500 dark:text-zinc-400"
+										class="truncate px-3 py-2 font-mono text-solid-gray-500 dark:text-solid-gray-400"
 										title={item.filename}
 									>
 										{item.filename}
@@ -458,30 +477,37 @@
 												type="button"
 												onclick={() => handlePlay(item)}
 												disabled={actionLoadingId === item.id}
-												class="inline-flex cursor-pointer items-center gap-1 rounded border border-blue-600 bg-blue-50 px-2 py-0.5 text-xs font-medium text-blue-700 transition hover:bg-blue-100 active:bg-blue-200 disabled:opacity-40 dark:border-blue-500/70 dark:bg-blue-950/40 dark:text-blue-300 dark:hover:bg-blue-900/50"
-												title="KC3Kaiリプレイヤーで自動再生"
+												class="inline-flex cursor-pointer items-center gap-1 rounded-4 bg-blue-900 px-2.5 py-1 text-xs font-bold text-white transition hover:bg-blue-1000 focus-visible:outline-2 focus-visible:outline-focus-yellow active:bg-blue-1100 disabled:opacity-40 dark:bg-blue-800 dark:hover:bg-blue-700"
+												title="KC3Kaiリプレイヤーで開く（クリップボードにもJSONコピー）"
 											>
-												<span class="text-blue-600 dark:text-blue-400">▶</span>
+												<Icon name="play" class="size-2.5 fill-current" />
 												<span>再生</span>
 											</button>
 											<button
 												type="button"
 												onclick={() => handleCopy(item)}
 												disabled={actionLoadingId === item.id}
-												class="inline-flex cursor-pointer items-center gap-1 rounded border border-zinc-300 bg-white px-2 py-0.5 text-xs text-zinc-700 transition hover:bg-zinc-100 active:bg-zinc-200 disabled:opacity-40 dark:border-zinc-700 dark:bg-zinc-800 dark:text-zinc-300 dark:hover:bg-zinc-700"
-												title="リプレイJSONをクリップボードにコピー"
+												class="inline-flex cursor-pointer items-center gap-1 rounded-4 border border-solid-gray-600 bg-white px-2 py-1 text-xs font-medium text-solid-gray-900 transition hover:bg-solid-gray-100 focus-visible:outline-2 focus-visible:outline-focus-yellow active:bg-solid-gray-200 disabled:opacity-40 dark:border-solid-gray-400 dark:bg-solid-gray-800 dark:text-white dark:hover:bg-solid-gray-700"
+												title="リプレイJSONをコピー"
 											>
-												<span>📋</span>
+												<Icon
+													name="copy"
+													class="size-3 text-solid-gray-600 dark:text-solid-gray-400"
+												/>
 												<span>コピー</span>
 											</button>
 											<button
 												type="button"
 												onclick={() => handleDownload(item)}
 												disabled={actionLoadingId === item.id}
-												class="inline-flex h-5.5 w-5.5 cursor-pointer items-center justify-center rounded border border-zinc-300 bg-white text-xs text-zinc-700 transition hover:bg-zinc-100 active:bg-zinc-200 disabled:opacity-40 dark:border-zinc-700 dark:bg-zinc-800 dark:text-zinc-300 dark:hover:bg-zinc-700"
-												title=".replay.json を保存"
+												class="inline-flex h-5.5 w-5.5 cursor-pointer items-center justify-center rounded-4 border border-solid-gray-600 bg-white text-xs text-solid-gray-900 transition hover:bg-solid-gray-100 focus-visible:outline-2 focus-visible:outline-focus-yellow active:bg-solid-gray-200 disabled:opacity-40 dark:border-solid-gray-400 dark:bg-solid-gray-800 dark:text-white dark:hover:bg-solid-gray-700"
+												title=".replay.json をダウンロード"
+												aria-label="JSONダウンロード"
 											>
-												💾
+												<Icon
+													name="download"
+													class="size-3 text-solid-gray-600 dark:text-solid-gray-400"
+												/>
 											</button>
 										</div>
 									</td>
@@ -491,15 +517,21 @@
 					</table>
 				</div>
 
-				<!-- ページ送りフッター -->
+				<!-- ページ送りフッター (DADS Pagination準拠) -->
 				<div
-					class="flex flex-wrap items-center justify-between gap-3 border-t border-zinc-200 bg-zinc-50 px-3 py-2 text-xs text-zinc-500 dark:border-zinc-800 dark:bg-zinc-900/80 dark:text-zinc-400"
+					class="flex flex-wrap items-center justify-between gap-3 border-t border-solid-gray-300 bg-solid-gray-50 px-3 py-2 text-xs text-solid-gray-700 dark:border-solid-gray-700 dark:bg-solid-gray-800/80 dark:text-solid-gray-300"
 				>
 					<div>
 						<span>
 							全 {filteredLogs.length.toLocaleString()} 件中
-							{((currentPage - 1) * pageSize + 1).toLocaleString()} 〜
-							{Math.min(currentPage * pageSize, filteredLogs.length).toLocaleString()} 件目を表示
+							<span class="font-bold tabular-nums">
+								{((currentPage - 1) * pageSize + 1).toLocaleString()}
+							</span>
+							〜
+							<span class="font-bold tabular-nums">
+								{Math.min(currentPage * pageSize, filteredLogs.length).toLocaleString()}
+							</span>
+							件目を表示
 						</span>
 					</div>
 
@@ -508,38 +540,44 @@
 							type="button"
 							onclick={() => (currentPage = 1)}
 							disabled={currentPage <= 1}
-							class="rounded border border-zinc-300 px-1.5 py-0.5 text-zinc-600 transition hover:bg-zinc-200 disabled:cursor-not-allowed disabled:opacity-30 dark:border-zinc-700 dark:text-zinc-400 dark:hover:bg-zinc-800"
+							class="inline-flex h-6 w-6 items-center justify-center rounded-4 border border-solid-gray-420 bg-white text-solid-gray-800 transition hover:bg-solid-gray-100 disabled:cursor-not-allowed disabled:opacity-30 dark:border-solid-gray-600 dark:bg-solid-gray-800 dark:text-solid-gray-200 dark:hover:bg-solid-gray-700"
 							title="最初のページ"
+							aria-label="最初のページ"
 						>
-							«
+							<Icon name="chevrons-left" class="size-3" />
 						</button>
 						<button
 							type="button"
 							onclick={() => (currentPage = Math.max(1, currentPage - 1))}
 							disabled={currentPage <= 1}
-							class="rounded border border-zinc-300 px-2 py-0.5 text-zinc-600 transition hover:bg-zinc-200 disabled:cursor-not-allowed disabled:opacity-30 dark:border-zinc-700 dark:text-zinc-400 dark:hover:bg-zinc-800"
+							class="inline-flex items-center gap-0.5 rounded-4 border border-solid-gray-420 bg-white px-2 py-0.5 text-solid-gray-800 transition hover:bg-solid-gray-100 disabled:cursor-not-allowed disabled:opacity-30 dark:border-solid-gray-600 dark:bg-solid-gray-800 dark:text-solid-gray-200 dark:hover:bg-solid-gray-700"
 						>
-							‹ 前へ
+							<Icon name="chevron-left" class="size-3" />
+							<span>前へ</span>
 						</button>
-						<span class="px-2 font-mono text-zinc-700 dark:text-zinc-300">
+						<span
+							class="px-2 font-mono text-xs font-medium text-solid-gray-900 dark:text-solid-gray-100"
+						>
 							{currentPage} / {totalPages}
 						</span>
 						<button
 							type="button"
 							onclick={() => (currentPage = Math.min(totalPages, currentPage + 1))}
 							disabled={currentPage >= totalPages}
-							class="rounded border border-zinc-300 px-2 py-0.5 text-zinc-600 transition hover:bg-zinc-200 disabled:cursor-not-allowed disabled:opacity-30 dark:border-zinc-700 dark:text-zinc-400 dark:hover:bg-zinc-800"
+							class="inline-flex items-center gap-0.5 rounded-4 border border-solid-gray-420 bg-white px-2 py-0.5 text-solid-gray-800 transition hover:bg-solid-gray-100 disabled:cursor-not-allowed disabled:opacity-30 dark:border-solid-gray-600 dark:bg-solid-gray-800 dark:text-solid-gray-200 dark:hover:bg-solid-gray-700"
 						>
-							次へ ›
+							<span>次へ</span>
+							<Icon name="chevron-right" class="size-3" />
 						</button>
 						<button
 							type="button"
 							onclick={() => (currentPage = totalPages)}
 							disabled={currentPage >= totalPages}
-							class="rounded border border-zinc-300 px-1.5 py-0.5 text-zinc-600 transition hover:bg-zinc-200 disabled:cursor-not-allowed disabled:opacity-30 dark:border-zinc-700 dark:text-zinc-400 dark:hover:bg-zinc-800"
+							class="inline-flex h-6 w-6 items-center justify-center rounded-4 border border-solid-gray-420 bg-white text-solid-gray-800 transition hover:bg-solid-gray-100 disabled:cursor-not-allowed disabled:opacity-30 dark:border-solid-gray-600 dark:bg-solid-gray-800 dark:text-solid-gray-200 dark:hover:bg-solid-gray-700"
 							title="最後のページ"
+							aria-label="最後のページ"
 						>
-							»
+							<Icon name="chevrons-right" class="size-3" />
 						</button>
 					</div>
 				</div>
@@ -547,32 +585,40 @@
 		{/if}
 	</main>
 
-	<!-- トースト通知 -->
+	<!-- トースト通知 (DADS Notice Block準拠) -->
 	<div
 		class="pointer-events-none fixed right-4 bottom-4 z-50 flex max-w-sm flex-col gap-2 transition-all duration-300"
 	>
 		{#each toasts as toast (toast.id)}
 			<div
-				class="pointer-events-auto flex items-start gap-2 rounded border border-zinc-300 bg-white p-3 text-xs text-zinc-800 shadow-md backdrop-blur dark:border-zinc-700 dark:bg-zinc-900 dark:text-zinc-200"
+				class="pointer-events-auto flex items-start gap-2.5 rounded-4 border border-solid-gray-300 bg-white p-3 text-xs text-solid-gray-900 shadow-1 dark:border-solid-gray-700 dark:bg-solid-gray-800 dark:text-white {toast.type ===
+				'success'
+					? 'border-l-4 border-l-success-1'
+					: toast.type === 'error'
+						? 'border-l-4 border-l-error-1'
+						: toast.type === 'warning'
+							? 'border-l-4 border-l-warning-yellow-1'
+							: 'border-l-4 border-l-blue-900 dark:border-l-blue-400'}"
 			>
-				<span class="shrink-0">
+				<span class="mt-0.5 shrink-0">
 					{#if toast.type === 'success'}
-						<span class="text-zinc-700 dark:text-zinc-300">✓</span>
+						<Icon name="check" class="size-3.5 text-success-1" />
 					{:else if toast.type === 'error'}
-						<span class="text-red-500">⚠</span>
+						<Icon name="alert-circle" class="size-3.5 text-error-1" />
 					{:else if toast.type === 'warning'}
-						<span class="text-amber-500">⚡</span>
+						<Icon name="alert-triangle" class="size-3.5 text-warning-yellow-1" />
 					{:else}
-						<span class="text-blue-500">ℹ</span>
+						<Icon name="info" class="size-3.5 text-blue-900 dark:text-blue-400" />
 					{/if}
 				</span>
 				<div class="flex-1 leading-snug">{toast.message}</div>
 				<button
 					type="button"
 					onclick={() => removeToast(toast.id)}
-					class="shrink-0 cursor-pointer text-zinc-400 hover:text-zinc-600 dark:hover:text-zinc-200"
+					class="shrink-0 cursor-pointer p-0.5 text-solid-gray-420 hover:text-solid-gray-700 dark:text-solid-gray-400 dark:hover:text-solid-gray-200"
+					aria-label="閉じる"
 				>
-					✕
+					<Icon name="x" class="size-3" />
 				</button>
 			</div>
 		{/each}
