@@ -3,6 +3,7 @@
 	type IconName =
 		| 'folder'
 		| 'folder-open'
+		| 'file-text'
 		| 'play'
 		| 'copy'
 		| 'download'
@@ -52,6 +53,12 @@
 		<path
 			d="m6 14 1.5-2.9A2 2 0 0 1 9.24 10H20a2 2 0 0 1 1.94 2.5l-1.55 6a2 2 0 0 1-1.94 1.5H4a2 2 0 0 1-2-2V5c0-1.1.9-2 2-2h3.93a2 2 0 0 1 1.66.9l.82 1.2a2 2 0 0 0 1.66.9H18a2 2 0 0 1 2 2v2"
 		/>
+	{:else if name === 'file-text'}
+		<path d="M15 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V7Z" />
+		<path d="M14 2v4a2 2 0 0 0 2 2h4" />
+		<path d="M10 9H8" />
+		<path d="M16 13H8" />
+		<path d="M16 17H8" />
 	{:else if name === 'play'}
 		<polygon points="6 3 20 12 6 21 6 3" fill="currentColor" stroke="currentColor" />
 	{:else if name === 'copy'}

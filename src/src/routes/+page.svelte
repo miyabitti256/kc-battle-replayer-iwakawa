@@ -20,7 +20,10 @@
 	let actionLoadingId = $state<string | null>(null);
 	let toasts = $state<ToastItem[]>([]);
 	let fileInputRef = $state<HTMLInputElement | null>(null);
+	let singleFileInputRef = $state<HTMLInputElement | null>(null);
 	let isDark = $state(false);
+	let isDragging = $state(false);
+	let dragCounter = 0;
 
 	const pageSize = 50;
 
@@ -52,6 +55,101 @@
 		toasts = toasts.filter((t) => t.id !== id);
 	}
 
+	function mergeLogs(newItems: BattleLogItem[]) {
+		if (newItems.length === 0) {
+			addToast('有効な .txt 戦闘ログが見つかりませんでした', 'warning');
+			return;
+		}
+
+		// Why not discard previous logs: Users may load individual battle files alongside an indexed folder.
+		const newIds = new Set(newItems.map((item) => item.id));
+		allLogs = [...newItems, ...allLogs.filter((item) => !newIds.has(item.id))];
+		currentPage = 1;
+		addToast(`${newItems.length.toLocaleString()} 件の戦闘ログを読み込みました`, 'info');
+	}
+
+	async function selectFiles() {
+		// Why not restrict to showOpenFilePicker: File System Access API is not supported in Firefox and WebKit browsers.
+		if ('showOpenFilePicker' in window) {
+			try {
+				const handles = await (
+					window as unknown as {
+						showOpenFilePicker: (options?: {
+							multiple?: boolean;
+							types?: Array<{
+								description: string;
+								accept: Record<string, string[]>;
+							}>;
+						}) => Promise<FileSystemFileHandle[]>;
+					}
+				).showOpenFilePicker({
+					multiple: true,
+					types: [
+						{
+							description: '戦闘ログテキスト (*.txt)',
+							accept: {
+								'text/plain': ['.txt']
+							}
+						}
+					]
+				});
+
+				if (!handles || handles.length === 0) return;
+
+				isLoading = true;
+				const items: BattleLogItem[] = [];
+				for (const handle of handles) {
+					if (handle.name.endsWith('.txt')) {
+						const parsed = parseLogFilename(handle.name);
+						items.push({
+							id: handle.name,
+							filename: handle.name,
+							handle,
+							...parsed
+						});
+					}
+				}
+
+				mergeLogs(items);
+			} catch (error) {
+				const domErr = error as DOMException;
+				if (domErr?.name !== 'AbortError') {
+					addToast(`ファイル選択に失敗しました: ${domErr.message || String(error)}`, 'error');
+				}
+			} finally {
+				isLoading = false;
+			}
+		} else if (singleFileInputRef) {
+			singleFileInputRef.click();
+		}
+	}
+
+	function handleSingleFileInput(e: Event) {
+		const target = e.currentTarget as HTMLInputElement;
+		if (!target.files || target.files.length === 0) return;
+
+		isLoading = true;
+		const items: BattleLogItem[] = [];
+		const files = target.files;
+
+		for (let i = 0; i < files.length; i++) {
+			const file = files[i];
+			if (file.name.endsWith('.txt')) {
+				const parsed = parseLogFilename(file.name);
+				items.push({
+					id: `${file.name}_${Date.now()}_${i}`,
+					filename: file.name,
+					file,
+					...parsed
+				});
+			}
+		}
+
+		mergeLogs(items);
+		target.value = '';
+		isLoading = false;
+	}
+
 	async function selectDirectory() {
 		// Why not restrict to showDirectoryPicker: File System Access API is not supported in Firefox and WebKit browsers.
 		if ('showDirectoryPicker' in window) {
@@ -78,9 +176,7 @@
 					}
 				}
 
-				allLogs = items;
-				currentPage = 1;
-				addToast(`${items.length.toLocaleString()} 件の戦闘ログを読み込みました`, 'info');
+				mergeLogs(items);
 			} catch (error) {
 				const domErr = error as DOMException;
 				if (domErr?.name !== 'AbortError') {
@@ -108,7 +204,7 @@
 			if (file.name.endsWith('.txt')) {
 				const parsed = parseLogFilename(file.name);
 				items.push({
-					id: `${file.name}_${i}`,
+					id: `${file.name}_${Date.now()}_${i}`,
 					filename: file.name,
 					file,
 					...parsed
@@ -116,10 +212,59 @@
 			}
 		}
 
-		allLogs = items;
-		currentPage = 1;
+		mergeLogs(items);
+		target.value = '';
 		isLoading = false;
-		addToast(`${items.length.toLocaleString()} 件の戦闘ログを読み込みました`, 'info');
+	}
+
+	function handleDragEnter(e: DragEvent) {
+		e.preventDefault();
+		dragCounter++;
+		isDragging = true;
+	}
+
+	function handleDragLeave(e: DragEvent) {
+		e.preventDefault();
+		dragCounter--;
+		if (dragCounter <= 0) {
+			dragCounter = 0;
+			isDragging = false;
+		}
+	}
+
+	function handleDragOver(e: DragEvent) {
+		e.preventDefault();
+		if (e.dataTransfer) {
+			e.dataTransfer.dropEffect = 'copy';
+		}
+	}
+
+	async function handleDrop(e: DragEvent) {
+		e.preventDefault();
+		dragCounter = 0;
+		isDragging = false;
+
+		const files = e.dataTransfer?.files;
+		if (!files || files.length === 0) return;
+
+		isLoading = true;
+		const items: BattleLogItem[] = [];
+
+		for (let i = 0; i < files.length; i++) {
+			const file = files[i];
+			if (file.name.endsWith('.txt')) {
+				const parsed = parseLogFilename(file.name);
+				items.push({
+					id: `${file.name}_${Date.now()}_${i}`,
+					filename: file.name,
+					file,
+					...parsed
+				});
+			}
+		}
+
+		mergeLogs(items);
+		isLoading = false;
 	}
 
 	function clearSearch() {
@@ -238,13 +383,10 @@
 			const url = URL.createObjectURL(blob);
 			const a = document.createElement('a');
 			a.href = url;
-			const baseName = item.filename.replace(/\.[^.]+$/, '');
-			a.download = `${baseName}.replay.json`;
-			document.body.appendChild(a);
+			a.download = `${item.filename.replace(/\.txt$/, '')}.replay.json`;
 			a.click();
-			document.body.removeChild(a);
 			URL.revokeObjectURL(url);
-			addToast(`${baseName}.replay.json をダウンロードしました`, 'success');
+			addToast('ダウンロードを開始しました', 'success');
 		} catch (error) {
 			addToast(
 				`保存に失敗しました: ${error instanceof Error ? error.message : String(error)}`,
@@ -256,9 +398,33 @@
 	}
 </script>
 
+<!-- svelte-ignore a11y_no_static_element_interactions -->
 <div
-	class="flex min-h-screen flex-col bg-solid-gray-50 font-sans text-solid-gray-900 transition-colors dark:bg-solid-gray-900 dark:text-white"
+	class="relative flex min-h-screen flex-col bg-solid-gray-50 font-sans text-solid-gray-900 transition-colors dark:bg-solid-gray-900 dark:text-white"
+	ondragenter={handleDragEnter}
+	ondragleave={handleDragLeave}
+	ondragover={handleDragOver}
+	ondrop={handleDrop}
 >
+	<!-- ドラッグ＆ドロップ オーバーレイ -->
+	{#if isDragging}
+		<div
+			class="pointer-events-none fixed inset-0 z-50 flex items-center justify-center bg-blue-900/10 backdrop-blur-xs dark:bg-blue-900/20"
+		>
+			<div
+				class="flex flex-col items-center gap-2 rounded-8 border-2 border-dashed border-blue-900 bg-white px-10 py-8 shadow-2 dark:border-blue-400 dark:bg-solid-gray-800"
+			>
+				<Icon name="file-text" class="size-10 text-blue-900 dark:text-blue-400" />
+				<p class="text-sm font-bold text-blue-900 dark:text-blue-300">
+					戦闘ログテキスト (.txt) をここにドロップ
+				</p>
+				<p class="text-xs text-solid-gray-600 dark:text-solid-gray-300">
+					単一または複数のログファイルを直接読み込みます
+				</p>
+			</div>
+		</div>
+	{/if}
+
 	<!-- ヘッダー (DADS HeaderContainer準拠) -->
 	<header
 		class="sticky top-0 z-20 border-b border-solid-gray-300 bg-white/95 px-4 py-2.5 backdrop-blur sm:px-6 dark:border-solid-gray-700 dark:bg-solid-gray-800/95"
@@ -283,7 +449,16 @@
 			</div>
 
 			<div class="flex flex-wrap items-center gap-2">
-				<!-- フォールバック用隠しインプット -->
+				<!-- フォールバック用隠しインプット: 単一/複数ファイル -->
+				<input
+					type="file"
+					accept=".txt"
+					multiple
+					class="hidden"
+					bind:this={singleFileInputRef}
+					onchange={handleSingleFileInput}
+				/>
+				<!-- フォールバック用隠しインプット: フォルダ -->
 				<input
 					type="file"
 					webkitdirectory
@@ -295,9 +470,21 @@
 
 				<button
 					type="button"
+					onclick={selectFiles}
+					disabled={isLoading}
+					class="inline-flex cursor-pointer items-center gap-1.5 rounded-4 border border-solid-gray-600 bg-white px-2.5 py-1 text-xs font-medium text-solid-gray-900 transition hover:bg-solid-gray-100 focus-visible:outline-4 focus-visible:outline-focus-yellow active:bg-solid-gray-200 disabled:opacity-40 dark:border-solid-gray-400 dark:bg-solid-gray-800 dark:text-white dark:hover:bg-solid-gray-700"
+					title="単一または複数の戦闘ログファイル (.txt) を選択"
+				>
+					<Icon name="file-text" class="size-3.5 text-solid-gray-600 dark:text-solid-gray-300" />
+					<span>ファイル選択</span>
+				</button>
+
+				<button
+					type="button"
 					onclick={selectDirectory}
 					disabled={isLoading}
 					class="inline-flex cursor-pointer items-center gap-1.5 rounded-4 border border-solid-gray-600 bg-white px-2.5 py-1 text-xs font-medium text-solid-gray-900 transition hover:bg-solid-gray-100 focus-visible:outline-4 focus-visible:outline-focus-yellow active:bg-solid-gray-200 disabled:opacity-40 dark:border-solid-gray-400 dark:bg-solid-gray-800 dark:text-white dark:hover:bg-solid-gray-700"
+					title="BattleLogフォルダを選択"
 				>
 					<Icon name="folder" class="size-3.5 text-solid-gray-600 dark:text-solid-gray-300" />
 					<span>{isLoading ? '走査中...' : 'フォルダ選択'}</span>
@@ -376,29 +563,50 @@
 		{#if allLogs.length === 0}
 			<!-- 空状態 (DADS Notice / Container準拠) -->
 			<div
-				class="my-auto flex flex-col items-center justify-center rounded-8 border border-solid-gray-300 bg-white p-12 text-center dark:border-solid-gray-700 dark:bg-solid-gray-800"
+				class="my-auto flex flex-col items-center justify-center rounded-8 border border-solid-gray-300 bg-white p-10 text-center sm:p-12 dark:border-solid-gray-700 dark:bg-solid-gray-800"
 			>
-				<Icon name="folder" class="mb-3 size-8 text-solid-gray-500 dark:text-solid-gray-400" />
+				<div
+					class="mb-3 flex items-center justify-center gap-2 text-solid-gray-500 dark:text-solid-gray-400"
+				>
+					<Icon name="file-text" class="size-8" />
+					<span class="text-solid-gray-300 dark:text-solid-gray-600">/</span>
+					<Icon name="folder" class="size-8" />
+				</div>
 				<h2 class="text-base font-bold text-solid-gray-900 dark:text-white">
-					戦闘ログフォルダを選択してください
+					戦闘ログファイルまたはフォルダを選択してください
 				</h2>
 				<p
 					class="mt-2 max-w-md text-xs leading-relaxed text-solid-gray-600 dark:text-solid-gray-300"
 				>
-					七四式電子観測儀の <code
+					七四式電子観測儀の戦闘詳細ログ（<code
+						class="rounded-4 border border-solid-gray-300 bg-solid-gray-100 px-1.5 py-0.5 font-mono text-[11px] text-solid-gray-800 dark:border-solid-gray-600 dark:bg-solid-gray-700 dark:text-solid-gray-200"
+						>.txt</code
+					>）、または
+					<code
 						class="rounded-4 border border-solid-gray-300 bg-solid-gray-100 px-1.5 py-0.5 font-mono text-[11px] text-solid-gray-800 dark:border-solid-gray-600 dark:bg-solid-gray-700 dark:text-solid-gray-200"
 						>BattleLog</code
-					> フォルダを選択すると、ファイル名から瞬時にインデックスを作成し一覧表示します。
+					> フォルダを選択してください。ファイルを直接画面にドラッグ＆ドロップすることも可能です。
 				</p>
-				<button
-					type="button"
-					onclick={selectDirectory}
-					disabled={isLoading}
-					class="mt-5 inline-flex cursor-pointer items-center gap-2 rounded-4 bg-blue-900 px-5 py-2 text-xs font-bold text-white transition hover:bg-blue-1000 focus-visible:outline-4 focus-visible:outline-focus-yellow active:bg-blue-1100 disabled:opacity-40 dark:bg-blue-800 dark:hover:bg-blue-700"
-				>
-					<Icon name="folder" class="size-4" />
-					<span>{isLoading ? '読み込み中...' : 'BattleLog フォルダを開く'}</span>
-				</button>
+				<div class="mt-5 flex flex-wrap items-center justify-center gap-3">
+					<button
+						type="button"
+						onclick={selectFiles}
+						disabled={isLoading}
+						class="inline-flex cursor-pointer items-center gap-2 rounded-4 bg-blue-900 px-5 py-2 text-xs font-bold text-white transition hover:bg-blue-1000 focus-visible:outline-4 focus-visible:outline-focus-yellow active:bg-blue-1100 disabled:opacity-40 dark:bg-blue-800 dark:hover:bg-blue-700"
+					>
+						<Icon name="file-text" class="size-4" />
+						<span>{isLoading ? '読み込み中...' : 'ファイルを選択する'}</span>
+					</button>
+					<button
+						type="button"
+						onclick={selectDirectory}
+						disabled={isLoading}
+						class="inline-flex cursor-pointer items-center gap-2 rounded-4 border border-solid-gray-600 bg-white px-5 py-2 text-xs font-bold text-solid-gray-900 transition hover:bg-solid-gray-100 focus-visible:outline-4 focus-visible:outline-focus-yellow active:bg-solid-gray-200 disabled:opacity-40 dark:border-solid-gray-400 dark:bg-solid-gray-800 dark:text-white dark:hover:bg-solid-gray-700"
+					>
+						<Icon name="folder" class="size-4" />
+						<span>{isLoading ? '読み込み中...' : 'BattleLog フォルダを開く'}</span>
+					</button>
+				</div>
 			</div>
 		{:else if filteredLogs.length === 0}
 			<div
