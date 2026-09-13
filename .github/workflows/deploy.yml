@@ -44,8 +44,11 @@ jobs:
           BASE_PATH: '/${{ github.event.repository.name }}'
         run: bun run build
 
+      # Why not omit enablement: Automatically enables GitHub Pages via API if not yet enabled in repo settings.
       - name: Setup Pages
         uses: actions/configure-pages@v5
+        with:
+          enablement: true
 
       - name: Upload artifact
         uses: actions/upload-pages-artifact@v3
