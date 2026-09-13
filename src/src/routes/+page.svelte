@@ -319,13 +319,25 @@
 		currentPage = 1;
 	}
 
+	async function readFileAsText(file: File): Promise<string> {
+		// Why not file.text(): ElectronicObserver logs may be encoded in Shift_JIS/CP932, requiring fallback when UTF-8 decoding fails.
+		const buffer = await file.arrayBuffer();
+		try {
+			const utf8Decoder = new TextDecoder('utf-8', { fatal: true });
+			return utf8Decoder.decode(buffer);
+		} catch {
+			const sjisDecoder = new TextDecoder('shift_jis');
+			return sjisDecoder.decode(buffer);
+		}
+	}
+
 	async function getLogContent(item: BattleLogItem): Promise<string> {
 		if (item.handle) {
 			const file = await item.handle.getFile();
-			return await file.text();
+			return await readFileAsText(file);
 		}
 		if (item.file) {
-			return await item.file.text();
+			return await readFileAsText(item.file);
 		}
 		throw new Error('ファイル参照が存在しません');
 	}

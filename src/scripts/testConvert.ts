@@ -568,11 +568,11 @@ function main() {
 		'api_stage_flag should be [1, 1, 0] when stage3 is absent'
 	);
 
-	// What: Verify battle without any air battle has api_stage_flag [0, 0, 0]
-	assert.deepStrictEqual(
+	// What: Verify battle without any air battle has api_stage_flag null
+	assert.strictEqual(
 		aswDay.api_stage_flag,
-		[0, 0, 0],
-		'Battle without air phase should have api_stage_flag [0, 0, 0]'
+		null,
+		'Battle without air phase should have api_stage_flag null'
 	);
 	console.log('Air Battle stage flags and plane extraction verified successfully!');
 
@@ -816,6 +816,52 @@ function main() {
 		'yasen.api_e_nowhps_combined[0] must be 186 (Mu-class)'
 	);
 	console.log('62-4 Boss HP restoration and enemy counter-attacks verified successfully!');
+
+	console.log(
+		'\n=== Test 9: Verify Shift_JIS file decoding and zero-aircraft air battle skipping ==='
+	);
+	const sjisLogPath = 'C:\\Users\\me\\Downloads\\BattleLog\\20260803_16365899@3-2-3.txt';
+	const rawBuffer = fs.readFileSync(sjisLogPath);
+
+	// What: Decode buffer using UTF-8 fatal with Shift_JIS fallback matching readFileAsText behavior
+	let decodedText: string;
+	try {
+		const utf8Decoder = new TextDecoder('utf-8', { fatal: true });
+		decodedText = utf8Decoder.decode(rawBuffer);
+	} catch {
+		const sjisDecoder = new TextDecoder('shift_jis');
+		decodedText = sjisDecoder.decode(rawBuffer);
+	}
+
+	// What: Verify Shift_JIS decoded text parses cell 3, enemy fleet name, and S victory
+	const parsedSjis = parseBattleLog(decodedText);
+	assert.strictEqual(parsedSjis.header.cell, 3, 'Parsed cell should be 3');
+	assert.strictEqual(
+		parsedSjis.header.enemyFleetName,
+		'敵北方水雷戦隊',
+		'Parsed enemy fleet name should be 敵北方水雷戦隊'
+	);
+	assert.strictEqual(parsedSjis.result?.rank, 'S', 'Battle result rank should be S');
+
+	// What: Convert parsed log to replay and verify api_kouku and api_stage_flag are null
+	const sjisReplay = convertBattleLogToReplay(decodedText);
+	assert.strictEqual(sjisReplay.battles.length, 1, 'Replay should have 1 battle');
+	const sjisBattle = sjisReplay.battles[0];
+	assert.strictEqual(sjisBattle.node, 3, 'Battle node should be 3');
+	assert.strictEqual(sjisBattle.rating, 'S', 'Battle rating should be S');
+
+	const sjisData = sjisBattle.data as BattleDayApiData;
+	assert.strictEqual(
+		sjisData.api_kouku,
+		null,
+		'api_kouku should be null when both sides have no aircraft'
+	);
+	assert.strictEqual(
+		sjisData.api_stage_flag,
+		null,
+		'api_stage_flag should be null when kouku is null'
+	);
+	console.log('Shift_JIS decoding and zero-aircraft skipping verified successfully!');
 
 	// What: Export generated sample JSON for external inspectability
 	const outputDir = path.resolve(import.meta.dirname, '../output');

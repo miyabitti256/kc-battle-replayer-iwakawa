@@ -24,7 +24,14 @@ import type {
 const shipLookup: Record<string, number> = shipLookupJson as Record<string, number>;
 const equipLookup: Record<string, number> = equipLookupJson as Record<string, number>;
 
+function stripDiacritics(value: string): string {
+	// How: decompose Unicode characters to base letter and combining marks, then strip combining marks
+	// Why not regex character class of accents: Unicode NFD decomposition handles all languages and combining accents uniformly.
+	return value.normalize('NFD').replace(/[\u0300-\u036f]/g, '');
+}
+
 export function resolveShipId(name: string): number {
+	// How: resolve ship ID by exact match, level-suffix removal, prefix matching, and accent-stripped fallback
 	const trimmed = name.trim();
 	if (shipLookup[trimmed]) return shipLookup[trimmed];
 
@@ -37,10 +44,23 @@ export function resolveShipId(name: string): number {
 		}
 	}
 
+	// Why not fail immediately: Shift_JIS/CP932 logs convert foreign accented letters (e.g., é) to ASCII letters.
+	const unaccented = stripDiacritics(baseName);
+	if (unaccented !== baseName) {
+		if (shipLookup[unaccented]) return shipLookup[unaccented];
+		for (const [k, id] of Object.entries(shipLookup)) {
+			const unaccentedKey = stripDiacritics(k);
+			if (unaccented.startsWith(unaccentedKey) || unaccentedKey.startsWith(unaccented)) {
+				return id;
+			}
+		}
+	}
+
 	return 0;
 }
 
 export function resolveEquipId(name: string): number {
+	// How: resolve equipment ID by exact match, improvement/proficiency removal, prefix matching, and accent-stripped fallback
 	const trimmed = name.trim();
 	if (equipLookup[trimmed]) return equipLookup[trimmed];
 
@@ -53,6 +73,18 @@ export function resolveEquipId(name: string): number {
 	for (const [k, id] of Object.entries(equipLookup)) {
 		if (cleanName.startsWith(k) || k.startsWith(cleanName)) {
 			return id;
+		}
+	}
+
+	// Why not fail immediately: Shift_JIS equipment names replace accented characters (e.g. Modèle -> Modele).
+	const unaccented = stripDiacritics(cleanName);
+	if (unaccented !== cleanName) {
+		if (equipLookup[unaccented]) return equipLookup[unaccented];
+		for (const [k, id] of Object.entries(equipLookup)) {
+			const unaccentedKey = stripDiacritics(k);
+			if (unaccented.startsWith(unaccentedKey) || unaccentedKey.startsWith(unaccented)) {
+				return id;
+			}
 		}
 	}
 
@@ -438,6 +470,17 @@ function buildKoukuApi(parsed: ParsedBattleLog): KoukuApi | null {
 		if (parsed.forces.enemyMain[i].equipments.some((e) => isAircraftEquipment(e.name, e.rawId))) {
 			ePlaneFrom.push(i + 1);
 		}
+	}
+
+	// Why not emit kouku when both sides lack aircraft or stage1 is 0/0: Air phase does not occur and replayer plays unwanted air battle sounds.
+	const hasNoAircraft = fPlaneFrom.length === 0 && ePlaneFrom.length === 0;
+	const isStage1ZeroPlanes =
+		airBattle.stage1 !== undefined &&
+		airBattle.stage1.friendTotal === 0 &&
+		airBattle.stage1.enemyTotal === 0;
+
+	if (hasNoAircraft || isStage1ZeroPlanes) {
+		return null;
 	}
 
 	const touchFriend = airBattle.stage1?.touchFriend
@@ -1060,7 +1103,7 @@ export function buildReplayData(parsed: ParsedBattleLog): ReplayData {
 		api_air_base_attack: airBaseAttacks.length > 0 ? airBaseAttacks : null,
 		api_stage_flag: kouku
 			? [kouku.api_stage1 ? 1 : 0, kouku.api_stage2 ? 1 : 0, kouku.api_stage3 ? 1 : 0]
-			: [0, 0, 0],
+			: null,
 		api_kouku: kouku,
 		api_support_flag: supportFlag,
 		api_support_info: supportInfo,

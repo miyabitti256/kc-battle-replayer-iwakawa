@@ -85,6 +85,14 @@ function buildShipLookup(sourceCode: string): Record<string, number> {
 		}
 	}
 
+	// Why not require manual aliases: automatic accent stripping covers all diacritics in Shift_JIS logs without maintaining individual character lists.
+	for (const [key, id] of Object.entries(lookup)) {
+		const unaccented = key.normalize('NFD').replace(/[\u0300-\u036f]/g, '');
+		if (unaccented !== key && !lookup[unaccented]) {
+			lookup[unaccented] = id;
+		}
+	}
+
 	return lookup;
 }
 
@@ -126,6 +134,14 @@ function buildEquipLookup(sourceCode: string): Record<string, number> {
 			} else {
 				lookup[`${nameJP}(${item.id})`] = item.id;
 			}
+		}
+	}
+
+	// Why not require manual aliases: automatic accent stripping covers all diacritics in Shift_JIS logs without maintaining individual character lists.
+	for (const [key, id] of Object.entries(lookup)) {
+		const unaccented = key.normalize('NFD').replace(/[\u0300-\u036f]/g, '');
+		if (unaccented !== key && !lookup[unaccented]) {
+			lookup[unaccented] = id;
 		}
 	}
 

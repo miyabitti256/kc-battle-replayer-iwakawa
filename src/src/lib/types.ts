@@ -210,7 +210,7 @@ export interface BattleDayApiData {
 	api_search: [number, number];
 	api_air_base_attack?: AirBaseAttackApi[] | null;
 	api_air_base_injection?: unknown | null;
-	api_stage_flag: [number, number, number];
+	api_stage_flag: [number, number, number] | null;
 	api_kouku: KoukuApi | null;
 	api_injection_kouku?: unknown | null;
 	api_support_flag: number;
