@@ -5,8 +5,8 @@ import {
 	convertBattleLogToReplay,
 	parseBattleLog,
 	SPECIAL_ATTACK_MAX_COUNTS
-} from '../src/lib/index.js';
-import type { BattleDayApiData } from '../src/lib/types.js';
+} from '../src/lib/index';
+import type { BattleDayApiData } from '../src/lib/types';
 
 function main() {
 	console.log(
@@ -324,7 +324,8 @@ function main() {
 《戦闘終了》
 `;
 	const threeActionsReplay = convertBattleLogToReplay(threeActionsLog);
-	const threeHougeki = threeActionsReplay.battles[0].yasen.api_hougeki;
+	const threeHougeki = threeActionsReplay.battles[0].yasen?.api_hougeki;
+	assert.ok(threeHougeki, 'hougeki should not be null');
 	assert.strictEqual(
 		threeHougeki.api_at_list.length,
 		2,
@@ -862,6 +863,204 @@ function main() {
 		'api_stage_flag should be null when kouku is null'
 	);
 	console.log('Shift_JIS decoding and zero-aircraft skipping verified successfully!');
+
+	console.log(
+		'\n=== Test 10: Verify Combined vs Combined engaging Enemy Escort Fleet in Night Battle ==='
+	);
+	// What: Verify Combined Fleet vs Combined Fleet battle engaging enemy escort fleet (#7..#12):
+	// 1. activeEnemyDeck is detected as 2 from night battle attacks targeting enemy #7..#12
+	// 2. yasen.api_active_deck is set to [2, 2] (friend escort vs enemy escort)
+	// 3. Defender indices in api_df_list and attacker indices in api_at_list match 0-indexed escort indices (6..11)
+	const logCombinedEscort = `テスト海域 (62-5) セル: 70 (ボス)
+深海連合艦隊
+
+◆ 空母機動部隊 対連合艦隊 昼戦 ◆
+《戦力》
+〈味方主力艦隊〉
+#1: 戦艦 大和改二 Lv. 99 HP: 98 / 98
+  51cm連装砲, 51cm連装砲
+#2: 戦艦 武蔵改二 Lv. 99 HP: 98 / 98
+  51cm連装砲, 51cm連装砲
+
+〈味方随伴艦隊〉
+#1: 軽巡洋艦 矢矧改二乙 Lv. 99 HP: 55 / 55
+  15.2cm連装砲改, 15.2cm連装砲改
+#2: 駆逐艦 時雨改三 Lv. 99 HP: 37 / 37
+  12.7cm連装砲C型改二, 12.7cm連装砲C型改二
+
+〈敵主力艦隊〉
+#1: ID:2394 巡洋戦艦 仏蘭西哀重姫 Lv. 1 HP: 1220 / 1220
+  [505] 20.3cm連装砲
+#2: ID:2119 正規空母 空母夏姫II Lv. 1 HP: 900 / 900
+  [518] 深海戦闘機
+
+〈敵随伴艦隊〉
+#1: ID:2318 軽巡洋艦 軽巡ム級-壊 Lv. 1 HP: 470 / 470
+  [505] 20.3cm連装砲
+#2: ID:1575 駆逐艦 駆逐ハ級後期型 Lv. 1 HP: 46 / 46
+  [505] 12.7cm連装高角砲
+
+《戦闘開始》
+
+《砲撃戦》
+大和改二 #1 → 仏蘭西哀重姫 #1
+[通常] 200 Dmg ( 1220 → 1020 )
+
+◆ 空母機動部隊 対連合艦隊 夜戦 ◆
+《戦力》
+〈味方随伴艦隊〉
+#1: 軽巡洋艦 矢矧改二乙 Lv. 99 HP: 55 / 55
+  15.2cm連装砲改, 15.2cm連装砲改
+#2: 駆逐艦 時雨改三 Lv. 99 HP: 37 / 37
+  12.7cm連装砲C型改二, 12.7cm連装砲C型改二
+
+〈敵主力艦隊〉
+#1: ID:2394 巡洋戦艦 仏蘭西哀重姫 Lv. 1 HP: 1020 / 1220
+  [505] 20.3cm連装砲
+#2: ID:2119 正規空母 空母夏姫II Lv. 1 HP: 900 / 900
+  [518] 深海戦闘機
+
+〈敵随伴艦隊〉
+#1: ID:2318 軽巡洋艦 軽巡ム級-壊 Lv. 1 HP: 470 / 470
+  [505] 20.3cm連装砲
+#2: ID:1575 駆逐艦 駆逐ハ級後期型 Lv. 1 HP: 46 / 46
+  [505] 12.7cm連装高角砲
+
+《夜戦開始》
+
+《夜戦》
+矢矧改二乙 #7 → 軽巡ム級-壊 #7
+[連撃] 80 Dmg , 120 Critical! ( 470 → 270 )
+
+駆逐ハ級後期型 #8 → 時雨改三 #8
+[通常] 12 Dmg ( 37 → 25 )
+
+時雨改三 #8 → 駆逐ハ級後期型 #8
+[魚雷カットイン(主/魚/電) 2Hit] 150 Critical! ( 46 → 0 )
+
+《戦闘終了》
+`;
+
+	const parsedEscortLog = parseBattleLog(logCombinedEscort);
+	// What: Verify parser detects activeEnemyDeck as 2 (escort fleet)
+	assert.strictEqual(
+		parsedEscortLog.nightBattle?.activeEnemyDeck,
+		2,
+		'activeEnemyDeck must be detected as 2 for enemy escort battle'
+	);
+
+	const replayEscort = convertBattleLogToReplay(logCombinedEscort);
+	const battleEscort = replayEscort.battles[0];
+	const yasenEscort = battleEscort.yasen;
+
+	// What: Verify api_active_deck is [2, 2] (friend escort deck 2 vs enemy escort deck 2)
+	assert.deepStrictEqual(
+		yasenEscort.api_active_deck,
+		[2, 2],
+		'yasen.api_active_deck must be [2, 2] for combined vs combined enemy escort night battle'
+	);
+
+	// What: Verify api_hougeki defender and attacker indices for enemy escort ships are in range 6..11
+	assert.ok(yasenEscort.api_hougeki, 'yasen.api_hougeki must exist');
+	const houEscort = yasenEscort.api_hougeki;
+	assert.strictEqual(houEscort.api_at_list.length, 3, 'Should have 3 attack turns in night battle');
+
+	// Turn 0: Yahagi #7 (friend escort 0, index 6) -> Mu-class #7 (enemy escort 0, index 6)
+	assert.strictEqual(houEscort.api_at_list[0], 6, 'Turn 0 attacker should be 6 (Yahagi #7)');
+	assert.strictEqual(houEscort.api_at_eflag[0], 0, 'Turn 0 attacker eflag should be 0 (friend)');
+	assert.deepStrictEqual(
+		houEscort.api_df_list[0],
+		[6, 6],
+		'Turn 0 defender should be [6, 6] (Mu-class #7)'
+	);
+
+	// Turn 1: Ha-class #8 (enemy escort 1, index 7) -> Shigure #8 (friend escort 1, index 7)
+	assert.strictEqual(houEscort.api_at_list[1], 7, 'Turn 1 attacker should be 7 (Ha-class #8)');
+	assert.strictEqual(houEscort.api_at_eflag[1], 1, 'Turn 1 attacker eflag should be 1 (enemy)');
+	assert.deepStrictEqual(
+		houEscort.api_df_list[1],
+		[7],
+		'Turn 1 defender should be [7] (Shigure #8)'
+	);
+
+	// Turn 2: Shigure #8 (friend escort 1, index 7) -> Ha-class #8 (enemy escort 1, index 7)
+	assert.strictEqual(houEscort.api_at_list[2], 7, 'Turn 2 attacker should be 7 (Shigure #8)');
+	assert.strictEqual(houEscort.api_at_eflag[2], 0, 'Turn 2 attacker eflag should be 0 (friend)');
+	assert.deepStrictEqual(
+		houEscort.api_df_list[2],
+		[7],
+		'Turn 2 defender should be [7] (Ha-class #8)'
+	);
+
+	// What: Verify friendly fleet attacks targeting escort fleet set activeEnemyDeck to 2 even without nightBattle attacks
+	const logFriendlyEscortOnly = `テスト海域 (62-5) セル: 70 (ボス)
+深海連合艦隊
+
+◆ 空母機動部隊 対連合艦隊 昼戦 ◆
+《戦力》
+〈味方主力艦隊〉
+#1: 戦艦 大和改二 Lv. 99 HP: 98 / 98
+  51cm連装砲, 51cm連装砲
+
+〈味方随伴艦隊〉
+#1: 軽巡洋艦 矢矧改二乙 Lv. 99 HP: 55 / 55
+  15.2cm連装砲改, 15.2cm連装砲改
+
+〈敵主力艦隊〉
+#1: ID:2394 巡洋戦艦 仏蘭西哀重姫 Lv. 1 HP: 1220 / 1220
+  [505] 20.3cm連装砲
+
+〈敵随伴艦隊〉
+#1: ID:2318 軽巡洋艦 軽巡ム級-壊 Lv. 1 HP: 470 / 470
+  [505] 20.3cm連装砲
+
+《戦闘開始》
+
+《砲撃戦》
+大和改二 #1 → 仏蘭西哀重姫 #1
+[通常] 200 Dmg ( 1220 → 1020 )
+
+◆ 空母機動部隊 対連合艦隊 夜戦 ◆
+《戦力》
+〈味方随伴艦隊〉
+#1: 軽巡洋艦 矢矧改二乙 Lv. 99 HP: 55 / 55
+  15.2cm連装砲改, 15.2cm連装砲改
+
+〈敵主力艦隊〉
+#1: ID:2394 巡洋戦艦 仏蘭西哀重姫 Lv. 1 HP: 1020 / 1220
+  [505] 20.3cm連装砲
+
+〈敵随伴艦隊〉
+#1: ID:2318 軽巡洋艦 軽巡ム級-壊 Lv. 1 HP: 470 / 470
+  [505] 20.3cm連装砲
+
+〈友軍艦隊〉
+#1: 重巡洋艦 最上改二特 Lv. 99 HP: 53 / 53
+  20.3cm(3号)連装砲, 甲標的
+
+《友軍艦隊援護》
+最上改二特 #1 → 軽巡ム級-壊 #7
+[連撃] 80 Dmg ( 470 → 390 )
+
+《夜戦開始》
+
+《戦闘終了》
+`;
+
+	const parsedFriendlyEscort = parseBattleLog(logFriendlyEscortOnly);
+	assert.strictEqual(
+		parsedFriendlyEscort.nightBattle?.activeEnemyDeck,
+		2,
+		'activeEnemyDeck must be 2 when determined via friendly fleet attack on escort'
+	);
+	const replayFriendlyEscort = convertBattleLogToReplay(logFriendlyEscortOnly);
+	assert.deepStrictEqual(
+		replayFriendlyEscort.battles[0].yasen.api_active_deck,
+		[2, 2],
+		'api_active_deck must be [2, 2] even if only friendly fleet attacked escort'
+	);
+
+	console.log('Combined vs Combined enemy escort night battle verified successfully!');
 
 	// What: Export generated sample JSON for external inspectability
 	const outputDir = path.resolve(import.meta.dirname, '../output');

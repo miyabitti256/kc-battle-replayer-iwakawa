@@ -12,7 +12,7 @@ import type {
 	ParsedNightBattle,
 	ParsedSearching,
 	ParsedShip
-} from '../types.js';
+} from '../types';
 
 const FORMATION_MAP: Record<string, number> = {
 	単縦陣: 1,
@@ -1024,6 +1024,9 @@ export function parseBattleLog(text: string): ParsedBattleLog {
 	}
 
 	restoreFriendlyInitialHp(friendlyFleet, friendlyBattle);
+	if (nightBattle) {
+		nightBattle.activeEnemyDeck = determineActiveEnemyDeck(nightBattle, friendlyBattle);
+	}
 	const nightInitialEnemyHps = computeNightInitialEnemyHps(
 		forces,
 		friendlyBattle,
@@ -1051,6 +1054,44 @@ export function parseBattleLog(text: string): ParsedBattleLog {
 		nightInitialEnemyHps,
 		nightInitialFriendHps
 	};
+}
+
+function determineActiveEnemyDeck(
+	nightBattle: ParsedNightBattle | undefined,
+	friendlyBattle: ParsedFriendlyBattle | undefined
+): 1 | 2 {
+	// How: identify target enemy deck by scanning participating enemy indices (1..6 for main, 7..12 for escort) in night and friendly phases
+	// Why not rely on enemyEscort presence alone: combined enemy fleet battles may engage either main fleet or escort fleet during night battle
+	if (nightBattle?.attacks && nightBattle.attacks.length > 0) {
+		for (const act of nightBattle.attacks) {
+			const enemyIdx = act.isFriendAttacker ? act.targetIndex : act.attackerIndex;
+			if (enemyIdx >= 7 && enemyIdx <= 12) return 2;
+			if (enemyIdx >= 1 && enemyIdx <= 6) return 1;
+		}
+	}
+
+	if (friendlyBattle?.attacks && friendlyBattle.attacks.length > 0) {
+		for (const act of friendlyBattle.attacks) {
+			const enemyIdx = act.isFriendAttacker ? act.targetIndex : act.attackerIndex;
+			if (enemyIdx >= 7 && enemyIdx <= 12) return 2;
+			if (enemyIdx >= 1 && enemyIdx <= 6) return 1;
+		}
+	}
+
+	const flareEnemyIdx = nightBattle?.flareEnemy?.index ?? friendlyBattle?.flareEnemy?.index;
+	if (flareEnemyIdx !== undefined) {
+		if (flareEnemyIdx >= 7 && flareEnemyIdx <= 12) return 2;
+		if (flareEnemyIdx >= 1 && flareEnemyIdx <= 6) return 1;
+	}
+
+	const slEnemyIdx =
+		nightBattle?.searchlightEnemy?.index ?? friendlyBattle?.searchlightEnemy?.index;
+	if (slEnemyIdx !== undefined) {
+		if (slEnemyIdx >= 7 && slEnemyIdx <= 12) return 2;
+		if (slEnemyIdx >= 1 && slEnemyIdx <= 6) return 1;
+	}
+
+	return 1;
 }
 
 function restoreFriendlyInitialHp(

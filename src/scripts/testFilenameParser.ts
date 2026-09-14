@@ -1,5 +1,5 @@
 import assert from 'node:assert';
-import { parseLogFilename } from '../src/lib/index.js';
+import { parseLogFilename } from '../src/lib/index';
 
 function main() {
 	console.log('=== Test: parseLogFilename ===');

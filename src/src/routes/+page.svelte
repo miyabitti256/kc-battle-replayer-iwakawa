@@ -1,7 +1,7 @@
 <script lang="ts">
 	import { onMount } from 'svelte';
 	import LZString from 'lz-string';
-	import { convertBattleLogToReplay, parseLogFilename, type BattleLogItem } from '$lib/index.js';
+	import { convertBattleLogToReplay, parseLogFilename, type BattleLogItem } from '$lib/index';
 	import Icon from '$lib/components/Icon.svelte';
 
 	interface ToastItem {

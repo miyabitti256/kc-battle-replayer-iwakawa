@@ -440,6 +440,8 @@ export interface ParsedNightBattle {
 	flareFriend?: { name: string; index: number };
 	flareEnemy?: { name: string; index: number };
 	attacks: ParsedAttackAction[];
+	// Why not boolean flag: api_active_deck values in replayer JSON are 1-based deck numbers (1 for main, 2 for escort)
+	activeEnemyDeck?: 1 | 2;
 }
 
 export interface ParsedBattleResult {

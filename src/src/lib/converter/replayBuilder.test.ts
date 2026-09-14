@@ -1,6 +1,6 @@
 import assert from 'node:assert/strict';
 import { describe, it } from 'node:test';
-import { resolveEquipId, resolveShipId } from './replayBuilder.js';
+import { resolveEquipId, resolveShipId } from './replayBuilder';
 
 describe('replayBuilder accent-insensitive ID resolution', () => {
 	it('What: resolveShipId resolves canonical accented ship names', () => {

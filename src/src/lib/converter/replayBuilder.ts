@@ -1,6 +1,6 @@
-import equipLookupJson from '../data/equipLookup.json' with { type: 'json' };
-import shipLookupJson from '../data/shipLookup.json' with { type: 'json' };
-import { parseBattleLog } from '../parser/battleLogParser.js';
+import equipLookupJson from '../data/equipLookup.json';
+import shipLookupJson from '../data/shipLookup.json';
+import { parseBattleLog } from '../parser/battleLogParser';
 import type {
 	AirBaseAttackApi,
 	BattleDayApiData,
@@ -19,7 +19,7 @@ import type {
 	ReplayData,
 	ReplayShip,
 	YasenHougekiApi
-} from '../types.js';
+} from '../types';
 
 const shipLookup: Record<string, number> = shipLookupJson as Record<string, number>;
 const equipLookup: Record<string, number> = equipLookupJson as Record<string, number>;
@@ -886,9 +886,13 @@ function buildYasenApi(
 		yasenResult.api_friendly_battle = friendlyBattle;
 	}
 
-	// Why not omit combined escort properties: KC3Kai replayer requires api_active_deck[1] === 1 and api_ship_ke_combined to trigger the enemy escort retreat animation.
+	// Why not hardcode api_active_deck[1] to 1: when fighting enemy escort fleet in night battle, api_active_deck[1] must be 2 so the replayer advances fleet2C and retreats fleet2
 	if (isEnemyCombined) {
-		yasenResult.api_active_deck = [2, 1];
+		const isFriendCombined =
+			parsed.header.combinedType > 0 ||
+			(!!parsed.forces.friendEscort && parsed.forces.friendEscort.length > 0);
+		const activeEnemyDeck = nightBattle?.activeEnemyDeck ?? 1;
+		yasenResult.api_active_deck = [isFriendCombined ? 2 : 1, activeEnemyDeck];
 		yasenResult.api_ship_ke_combined = dayData.api_ship_ke_combined;
 		yasenResult.api_ship_lv_combined = dayData.api_ship_lv_combined;
 		yasenResult.api_e_nowhps_combined = enemyEscortHps;
